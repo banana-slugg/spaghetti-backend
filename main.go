@@ -40,8 +40,10 @@ func main() {
 
 func (s *spaghettiHandler) auth(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE, PUT")
+	w.Header().Set("Access-Control-Allow-Headers", "authorization")
+
 	username, password, ok := r.BasicAuth()
-	log.Printf("%v, %v, %v", username, password, ok)
 
 	switch r.Method {
 	case "GET":
@@ -52,6 +54,9 @@ func (s *spaghettiHandler) auth(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
+	case "OPTIONS":
+		w.WriteHeader(http.StatusOK)
+		return
 	default:
 		w.WriteHeader(http.StatusUnauthorized)
 		return
@@ -102,7 +107,6 @@ func (s *spaghettiHandler) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	case "POST":
 		if !ok || username != "Spagett" || password != s.pass {
-			w.Header().Set("WWW-Authenticate", `Basic realm="spag"`)
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("hey, scram!"))
 			return
