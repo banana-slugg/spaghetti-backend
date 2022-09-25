@@ -15,26 +15,86 @@ type SpaghettiLevel struct {
 
 type spaghettiHandler struct {
 	sync.Mutex
-	sl   SpaghettiLevel
-	pass string
+	sl     SpaghettiLevel
+	pass   string
+	stream chan int
 }
 
 func main() {
 	fmt.Println("Starting server...")
 
-	spagLevel := &spaghettiHandler{sl: SpaghettiLevel{Level: 1}, pass: os.Getenv("SPAG_PASS")}
+	spagLevel := &spaghettiHandler{sl: SpaghettiLevel{Level: 1}, pass: os.Getenv("SPAG_PASS"), stream: nil}
 
 	if spagLevel.pass == "" {
 		panic("Needs password")
 	}
 
-	http.HandleFunc("/spaghetti", spagLevel.serve)
+	mux := http.NewServeMux()
 
-	log.Fatal(http.ListenAndServe(":3000", nil))
+	mux.HandleFunc("/spaghetti", spagLevel.serve)      // REST
+	mux.HandleFunc("/stream", spagLevel.streamHandler) // server sent events
+	mux.HandleFunc("/auth", spagLevel.auth)            // password check
+
+	log.Fatal(http.ListenAndServe(":3000", mux))
+}
+
+func (s *spaghettiHandler) auth(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	username, password, ok := r.BasicAuth()
+	log.Printf("%v, %v, %v", username, password, ok)
+
+	switch r.Method {
+	case "GET":
+		if !ok || username != "Spagett" || password != s.pass {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		} else {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+	default:
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+}
+
+func (s *spaghettiHandler) streamHandler(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	s.stream = make(chan int)
+
+	defer func() {
+		if s.stream != nil {
+			close(s.stream)
+			s.stream = nil
+		}
+	}()
+
+	flush, ok := w.(http.Flusher)
+	if !ok {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	for {
+		select {
+		case message := <-s.stream:
+			fmt.Fprintf(w, "data: %v\n\n", message)
+			log.Printf("MESSAGE DISPATCHED: %v", message)
+			flush.Flush()
+		case <-r.Context().Done():
+			log.Println("CONNECTION CLOSED")
+			return
+		}
+	}
 }
 
 func (s *spaghettiHandler) serve(w http.ResponseWriter, r *http.Request) {
 	username, password, ok := r.BasicAuth()
+	w.Header().Set("Access-Control-Allow-Origin", "*")
 
 	switch r.Method {
 	case "GET":
@@ -42,13 +102,13 @@ func (s *spaghettiHandler) serve(w http.ResponseWriter, r *http.Request) {
 		return
 	case "POST":
 		if !ok || username != "Spagett" || password != s.pass {
+			w.Header().Set("WWW-Authenticate", `Basic realm="spag"`)
 			w.WriteHeader(http.StatusUnauthorized)
 			w.Write([]byte("hey, scram!"))
 			return
-		} else {
-			s.post(w, r)
-			return
 		}
+		s.post(w, r)
+
 	default:
 		w.WriteHeader(http.StatusTeapot)
 		w.Write([]byte("Unfortunately, I am a teapot"))
@@ -62,7 +122,6 @@ func (s *spaghettiHandler) get(w http.ResponseWriter, r *http.Request) {
 	s.Unlock()
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
 		return
 	}
 	w.Header().Add("content-type", "application/json")
@@ -84,11 +143,17 @@ func (s *spaghettiHandler) post(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(err.Error()))
 		return
 	}
 
 	s.Lock()
-	s.sl.Level = spag.Level
 	defer s.Unlock()
+	if spag.Level > 10 || spag.Level < 1 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	s.sl.Level = spag.Level
+	if s.stream != nil {
+		s.stream <- s.sl.Level
+	}
 }
