@@ -100,6 +100,8 @@ func (s *spaghettiHandler) streamHandler(w http.ResponseWriter, r *http.Request)
 func (s *spaghettiHandler) serve(w http.ResponseWriter, r *http.Request) {
 	username, password, ok := r.BasicAuth()
 	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE, PUT")
+	w.Header().Set("Access-Control-Allow-Headers", "authorization")
 
 	switch r.Method {
 	case "GET":
@@ -112,6 +114,10 @@ func (s *spaghettiHandler) serve(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		s.post(w, r)
+
+	case "OPTIONS":
+		w.WriteHeader(http.StatusOK)
+		return
 
 	default:
 		w.WriteHeader(http.StatusTeapot)
