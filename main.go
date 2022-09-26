@@ -39,7 +39,7 @@ func main() {
 	mux.HandleFunc("/stream", spagLevel.streamHandler) // server sent events
 	mux.HandleFunc("/auth", spagLevel.auth)            // "login"
 
-	log.Fatal(http.ListenAndServe(":3000", mux))
+	log.Fatal(http.ListenAndServe(getPort(), mux))
 }
 
 func (s *spaghettiHandler) auth(w http.ResponseWriter, r *http.Request) {
@@ -170,4 +170,15 @@ func (s *spaghettiHandler) post(w http.ResponseWriter, r *http.Request) {
 	if s.stream != nil {
 		s.stream <- s.sl.Level
 	}
+}
+
+func getPort() string {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = ":3000"
+	} else {
+		port = ":" + port
+	}
+
+	return port
 }
