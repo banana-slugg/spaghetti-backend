@@ -35,7 +35,7 @@ func main() {
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/spaghetti", spagLevel.serve)      // REST
+	mux.HandleFunc("/", spagLevel.serve)               // REST
 	mux.HandleFunc("/stream", spagLevel.streamHandler) // server sent events
 	mux.HandleFunc("/auth", spagLevel.auth)            // "login"
 
