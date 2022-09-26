@@ -23,7 +23,11 @@ type spaghettiHandler struct {
 func main() {
 	fmt.Println("Starting server...")
 
-	spagLevel := &spaghettiHandler{sl: SpaghettiLevel{Level: 1}, pass: os.Getenv("SPAG_PASS"), stream: nil}
+	spagLevel := &spaghettiHandler{
+		sl:     SpaghettiLevel{Level: 1},
+		pass:   os.Getenv("SPAG_PASS"),
+		stream: nil,
+	}
 
 	if spagLevel.pass == "" {
 		panic("Needs password")
@@ -33,7 +37,7 @@ func main() {
 
 	mux.HandleFunc("/spaghetti", spagLevel.serve)      // REST
 	mux.HandleFunc("/stream", spagLevel.streamHandler) // server sent events
-	mux.HandleFunc("/auth", spagLevel.auth)            // password check
+	mux.HandleFunc("/auth", spagLevel.auth)            // "login"
 
 	log.Fatal(http.ListenAndServe(":3000", mux))
 }
