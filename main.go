@@ -26,7 +26,7 @@ func main() {
 	spagLevel := &spaghettiHandler{
 		sl:     SpaghettiLevel{Level: 1},
 		pass:   os.Getenv("SPAG_PASS"),
-		stream: nil,
+		stream: make(chan int),
 	}
 
 	if spagLevel.pass == "" {
@@ -73,14 +73,12 @@ func (s *spaghettiHandler) streamHandler(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
-	s.stream = make(chan int)
-
-	defer func() {
-		if s.stream != nil {
-			close(s.stream)
-			s.stream = nil
-		}
-	}()
+	// defer func() {
+	// 	if s.stream != nil {
+	// 		close(s.stream)
+	// 		s.stream = nil
+	// 	}
+	// }()
 
 	flush, ok := w.(http.Flusher)
 	if !ok {
@@ -170,9 +168,8 @@ func (s *spaghettiHandler) post(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.sl.Level = spag.Level
-	if s.stream != nil {
-		s.stream <- s.sl.Level
-	}
+	s.stream <- s.sl.Level
+
 }
 
 func getPort() string {
