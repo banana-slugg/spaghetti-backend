@@ -15,18 +15,20 @@ type SpaghettiLevel struct {
 
 type spaghettiHandler struct {
 	sync.Mutex
-	sl     SpaghettiLevel
-	pass   string
-	stream chan int
+	sl      SpaghettiLevel
+	pass    string
+	stream  chan int
+	readers uint
 }
 
 func main() {
 	fmt.Println("Starting server...")
 
 	spagLevel := &spaghettiHandler{
-		sl:     SpaghettiLevel{Level: 1},
-		pass:   os.Getenv("SPAG_PASS"),
-		stream: make(chan int),
+		sl:      SpaghettiLevel{Level: 1},
+		pass:    os.Getenv("SPAG_PASS"),
+		stream:  make(chan int),
+		readers: 0,
 	}
 
 	if spagLevel.pass == "" {
@@ -79,6 +81,9 @@ func (s *spaghettiHandler) streamHandler(w http.ResponseWriter, r *http.Request)
 	// 		s.stream = nil
 	// 	}
 	// }()
+	s.Lock()
+	s.readers++
+	s.Unlock()
 
 	flush, ok := w.(http.Flusher)
 	if !ok {
@@ -97,6 +102,9 @@ func (s *spaghettiHandler) streamHandler(w http.ResponseWriter, r *http.Request)
 
 		case <-r.Context().Done():
 			log.Println("CONNECTION CLOSED")
+			s.Lock()
+			s.readers--
+			s.Unlock()
 			return
 		}
 	}
@@ -162,14 +170,16 @@ func (s *spaghettiHandler) post(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.Lock()
+	defer s.Unlock()
 	if spag.Level > 10 || spag.Level < 1 {
 		w.WriteHeader(http.StatusBadRequest)
-		s.Unlock()
 		return
 	}
 	s.sl.Level = spag.Level
-	s.Unlock()
-	s.stream <- s.sl.Level
+
+	for i := 0; i < int(s.readers); i++ {
+		s.stream <- s.sl.Level
+	}
 
 }
 
