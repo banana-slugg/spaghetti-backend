@@ -105,7 +105,7 @@ func (s *spaghettiHandler) serve(w http.ResponseWriter, r *http.Request) {
 	username, password, ok := r.BasicAuth()
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE, PUT")
-	w.Header().Set("Access-Control-Allow-Headers", "authorization")
+	w.Header().Set("Access-Control-Allow-Headers", "authorization, content-type")
 
 	switch r.Method {
 	case "GET":
