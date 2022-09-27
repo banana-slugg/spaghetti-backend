@@ -91,9 +91,11 @@ func (s *spaghettiHandler) streamHandler(w http.ResponseWriter, r *http.Request)
 	for {
 		select {
 		case message := <-s.stream:
-			fmt.Fprintf(w, "data: %v\n\n", message)
-			log.Printf("MESSAGE DISPATCHED: %v", message)
-			flush.Flush()
+			if s.stream != nil {
+				fmt.Fprintf(w, "data: %v\n\n", message)
+				log.Printf("MESSAGE DISPATCHED: %v", message)
+				flush.Flush()
+			}
 		case <-r.Context().Done():
 			log.Println("CONNECTION CLOSED")
 			return
