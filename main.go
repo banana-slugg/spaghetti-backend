@@ -162,12 +162,12 @@ func (s *spaghettiHandler) post(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.Lock()
-	defer s.Unlock()
 	if spag.Level > 10 || spag.Level < 1 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 	s.sl.Level = spag.Level
+	s.Unlock()
 	s.stream <- s.sl.Level
 
 }
