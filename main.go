@@ -94,8 +94,9 @@ func (s *spaghettiHandler) streamHandler(w http.ResponseWriter, r *http.Request)
 			if s.stream != nil {
 				fmt.Fprintf(w, "data: %v\n\n", message)
 				log.Printf("MESSAGE DISPATCHED: %v", message)
-				flush.Flush()
 			}
+			flush.Flush()
+
 		case <-r.Context().Done():
 			log.Println("CONNECTION CLOSED")
 			return
